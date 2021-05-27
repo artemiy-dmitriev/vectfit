@@ -50,12 +50,19 @@ def vectfit_step(f, s, poles):
     #   - 2 for the second of a cc pair
     for i, p in enumerate(poles):
         if p.imag != 0:
-            if i == 0 or cindex[i-1] != 1:
-                assert cc(poles[i]) == poles[i+1], ("Complex poles must come in conjugate pairs: %s, %s" % (poles[i], poles[i+1]))
-                cindex[i] = 1
-            else:
-                cindex[i] = 2
-
+            if i == 0 or cindex[i-1] != 3: #(i-1)th pole is real or has already been paired with (i-2)th pole
+                if i+1 < N: #current pole is not the last one, deferring the check
+                    cindex[i]=3
+                else: #current pole is the last one
+                    raise RuntimeError("Complex poles must come in conjugate pairs: %s" % (poles[i]))
+            else: # (i-1)th pole is complex and has not formed a pair yet
+                if cc(poles[i-1]) == p:
+                    # we identified both poles from a complex conjugate pair
+                    cindex[i-1]=1
+                    cindex[i]=2
+                else:
+                    raise RuntimeError("Complex poles must come in conjugate pairs: %s, %s" % (poles[i-1],poles[i]))
+                    
     # First linear equation to solve. See Appendix A
     A = zeros((Ns, 2*N+2), dtype=np.complex64)
     for i, p in enumerate(poles):
