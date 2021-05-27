@@ -1,7 +1,7 @@
 vectfit.py
 ==========
 
-Duplication of the [Fast Relaxed Vector-Fitting algorithm](http://www.sintef.no/Projectweb/VECTFIT/) in python.
+Duplication of the [Fast Relaxed Vector-Fitting algorithm](https://www.sintef.no/projectweb/vectorfitting/) in python.
 
 Adapted for python3 from the original Python 2 package by Phil Reynolds (https://github.com/PhilReinhold/vectfit_python)
 
