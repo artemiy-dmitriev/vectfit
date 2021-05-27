@@ -24,13 +24,13 @@ __author__ = 'Artemiy Dmitriev'
 
 from pylab import *
 from numpy.linalg import eigvals, lstsq
-import builtins
 
 def cc(z):
     return z.conjugate()
 
 def model(s, poles, residues, d, h):
-    return builtins.sum(r/(s-p) for p, r in zip(poles, residues)) + d + s*h
+    my_sum = np.sum(residues/(np.tile(s,(len(poles),1)).transpose()-poles),axis=1)
+    return my_sum + d + s*h
 
 def vectfit_step(f, s, poles):
     """
@@ -222,7 +222,7 @@ if __name__ == '__main__':
     print("Using the test parameter set:")
     print_params(my_poles, my_residues, my_d, my_h)
 
-    my_tf = builtins.sum(c/(1j*freqs - a) for c,a in zip(my_residues,my_poles)) + my_d + my_h*1j*freqs # Test TF
+    my_tf = model(1j*freqs, my_poles, my_residues, my_d, my_h) # Test TF
 
     print("Fitting...")
     uf_poles, uf_residues, uf_d, uf_h = vectfit_auto(my_tf,
