@@ -337,43 +337,35 @@ def polres_to_zpk(poles, residues, d=0, h=0):
     return zeros,poles,k
 
 if __name__ == '__main__':
+    # List of frequencies in Hz
     freqs=np.logspace(-3,3,1000)
+    # List of arguments of the transfer function in the Laplace domain
+    s = 2*np.pi*freqs*1j
 
-    my_poles = np.array([-1e-2+1e-2j,-1e-2-1e-2j,-1e-2+1j,-1e-2-1j,-1e1,-5e1])
-    my_residues = -my_poles
-    my_d=0
-    my_h=0
+    # Test transfer function 1, given by poles, residues, offset, and slope:
+    #given in zpk format (zeros, poles, gain):
+    tst_poles = 2*np.pi*np.array([-1e-2+1e-2j,-1e-2-1e-2j,-1e-2+1j,-1e-2-1j,-1e1,-5e1]) # poles
+    tst_residues = -tst_poles # residues
+    tst_d=0 # offset (optional)
+    tst_h=0 # slope (optional)
 
-    print("Using the test parameter set:")
-    print_params(my_poles, my_residues, my_d, my_h)
+    # Evaluation of test function 1: list of complex values to fit
+    tst_tf = model_polres(s, tst_poles, tst_residues, tst_d, tst_h)
 
-    my_tf = model_polres(1j*freqs, my_poles, my_residues, my_d, my_h) # Test TF
+    # Vector fitting
+    # 1. using default parameters (10 iterations, 10 complex pole pairs), make a plot
+    fit1_poles, fit1_residues, fit1_d, fit1_h = \
+        vectfit_auto(tst_tf, s, show=True) 
 
-    print("Fitting...")
-    uf_poles, uf_residues, uf_d, uf_h = vectfit_auto(my_tf,
-                                                             1j*freqs,
-                                                             init_spacing='log')
-    fit_unscaled = model_polres(1j*freqs, uf_poles, uf_residues, uf_d, uf_h) # Unscaled vector fitting
+    # 2. giving an explicit number of poles (2 complex conjugated pairs and 2 real poles, 10 iterations)
+    fit2_poles, fit2_residues, fit2_d, fit2_h = \
+        vectfit_auto(tst_tf, s, n_complex_pairs=2, n_real_poles=2) 
 
-    sf_poles, sf_residues, sf_d, sf_h = vectfit_auto_rescale(my_tf,
-                                                                     1j*freqs,
-                                                                     init_spacing='log')
-    fit_scaled = model(1j*freqs, sf_poles, sf_residues, sf_d, sf_h)
-    print("Complete")
+    print("Test parameters:")
+    print("================")
+    print_params(tst_poles, tst_residues, tst_d, tst_h, switch_to_Hz = True)
+    print()
 
-    plt.figure(figsize=(12,8))
-    plt.subplot(211)
-    plt.title("Example: fitting a transfer function with vectfit in Python")
-    plt.loglog(freqs, np.abs(my_tf), label = "model")
-    plt.loglog(freqs, np.abs(fit_unscaled), label = "fit_unscaled", ls="--" )
-    plt.loglog(freqs, np.abs(fit_scaled), label = "fit_scaled", ls=":")
-    plt.legend()
-    plt.ylabel("Amplitude")
-    plt.subplot(212)
-    plt.semilogx(freqs, np.angle(my_tf)*180/np.pi, label = "model")
-    plt.semilogx(freqs, np.angle(fit_unscaled)*180/np.pi, label = "fit_unscaled", ls="--")
-    plt.semilogx(freqs, np.angle(fit_scaled)*180/np.pi, label = "fit_scaled", ls=":")
-    plt.legend()
-    plt.xlabel("Frequency, Hz")
-    plt.ylabel("Phase, degrees")
-    plt.show()
+    print("Fitted parameters:")
+    print("==================")
+    print_params(fit2_poles, fit2_residues, fit2_d, fit2_h, switch_to_Hz = True)
