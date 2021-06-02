@@ -330,6 +330,7 @@ def print_params(poles, residues, d=0, h=0, switch_to_Hz=False):
             print("offset       :\n", d)
             print("slope [1/Hz] :\n", h*norm)
     else:
+        norm = 1
         with np.printoptions(precision=4, suppress=True):
             print("poles [rad/s]   :\n", poles)
             print("residues [rad/s]:\n", residues)
@@ -347,6 +348,7 @@ def print_zpk_params(zeros, poles, k, switch_to_Hz=False):
             print("poles [Hz]   :\n", poles/norm)
             print("k            :\n", k)
     else:
+        norm = 1
         with np.printoptions(precision=4, suppress=True):
             print("zeros [rad/s]   :\n", zeros/norm)
             print("poles [rad/s]   :\n", poles/norm)
@@ -371,6 +373,7 @@ def vectfit_auto(f, s, n_complex_pairs=10, n_real_poles=0, n_iter=10, show=False
             warnings.warn("Argument n_complex_pairs is ignored if allow_nonconj is True. Use n_complex_poles instead.")
     
     w = np.imag(s)
+    init_poles = []
     
     # Generating initial poles
     ## Determining locations of complex poles or pole pairs
@@ -383,17 +386,19 @@ def vectfit_auto(f, s, n_complex_pairs=10, n_real_poles=0, n_iter=10, show=False
 
     lr = loss_ratio
     
-    # Generating initial cmplex poles or pairs
-    if allow_nonconj == False:
-        init_poles = poles = np.concatenate([[p*(-lr + 1j), p*(-lr - 1j)] for p in pole_locs])
-    if allow_nonconj == True:
-        init_poles = poles = np.concatenate([[p*(-lr + 1j)] for p in pole_locs])
+   
+    # Generating initial complex poles or pairs
+    if allow_nonconj == False and n_complex_pole_locs != 0:
+        init_poles = np.concatenate([[p*(-lr + 1j), p*(-lr - 1j)] for p in pole_locs])
+    elif allow_nonconj == True and n_complex_pole_locs != 0:
+        init_poles = np.concatenate([[p*(-lr + 1j)] for p in pole_locs])
         
     # Generating initial real poles
     if n_real_poles != 0:
-        poles = np.concatenate((poles, n_real_poles*[-1]))
+        init_poles = np.concatenate((init_poles, n_real_poles*[-1]))
 
     # Running vectfit_step() or cvectfit_step() iteratively
+    poles = init_poles
     poles_list = []
     for _ in range(n_iter):
         poles = vectfit_iter(f, s, poles, allow_unstable=allow_unstable)
