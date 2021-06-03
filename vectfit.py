@@ -25,6 +25,7 @@ __author__ = 'Artemiy Dmitriev'
 import numpy as np
 from numpy.polynomial import polynomial as P
 import warnings
+import matplotlib.pyplot as plt
 
 class IllCondError(Exception):
     pass
@@ -32,18 +33,46 @@ class IllCondError(Exception):
 def cc(z):
     return z.conjugate()
 
-def model_polres(s, poles, residues, d=0, h=0):
+def model_polres(s, poles, residues, d=0, h=0, show=False):
     """Evaluates a transfer function given by poles, residues, offset `d`, and slope `h`, at all points from `s`"""
     my_sum = np.sum(residues/(np.tile(s,(len(poles),1)).transpose()-poles),axis=1)
-    return my_sum + d + s*h
+    result = my_sum + d + s*h
+    
+    if show==True:
+        plt.figure(figsize=(12,8))
+        plt.subplot(211)
+        plt.title("Transfer function from poles and residues")
+        plt.loglog(np.real(s/2j/np.pi), np.abs(result))
+        plt.ylabel("Amplitude")
+        plt.subplot(212)
+        plt.semilogx(np.real(s/2j/np.pi), np.angle(result)*180/np.pi)
+        plt.legend()
+        plt.xlabel("Frequency, Hz")
+        plt.ylabel("Phase, degrees")
+        plt.show()
+    return result
 
-def model_zpk(s, zeros, poles, k):
+def model_zpk(s, zeros, poles, k, show=False):
     """Evaluates a transfer function given by zeros, poles, and gain `k`, at all points from `s` """
     num_poly = P.polyfromroots(zeros)
     den_poly = P.polyfromroots(poles)
     num = P.polyval(s, num_poly)
     den = P.polyval(s, den_poly)
-    return k * num / den
+    result = k * num / den
+    
+    if show==True:
+        plt.figure(figsize=(12,8))
+        plt.subplot(211)
+        plt.title("Transfer function from ZPK")
+        plt.loglog(np.real(s/2j/np.pi), np.abs(result))
+        plt.ylabel("Amplitude")
+        plt.subplot(212)
+        plt.semilogx(np.real(s/2j/np.pi), np.angle(result)*180/np.pi)
+        plt.legend()
+        plt.xlabel("Frequency, Hz")
+        plt.ylabel("Phase, degrees")
+        plt.show()
+    return result
 
 def vectfit_step(f, s, poles, allow_unstable=False):
 
@@ -435,7 +464,6 @@ def vectfit_auto(f, s, n_complex_pairs=10, n_real_poles=0, n_iter=10, show=False
         fit = model_polres(s, poles, residues, d, h)
         
         # Plotting results
-        import matplotlib.pyplot as plt
         plt.figure(figsize=(12,8))
         plt.subplot(211)
         plt.title("Vectfit result")
