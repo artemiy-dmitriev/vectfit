@@ -355,7 +355,7 @@ def print_zpk_params(zeros, poles, k, switch_to_Hz=False):
             print("k               :\n", k)
 
 def vectfit_auto(f, s, n_complex_pairs=10, n_real_poles=0, n_iter=10, show=False,
-                  init_spacing="lin", loss_ratio=1e-2, rcond=-1, track_poles=False, allow_unstable=False, allow_rescale=True, allow_nonconj=False, n_complex_poles=10, suppress_warnings=False):
+                  init_spacing="lin", loss_ratio=1e-2, rcond=-1, track_poles=False, allow_unstable=False, allow_rescale=True, allow_nonconj=False, n_complex_poles=10, suppress_warnings=False, init_poles=[]):
     
     # Choose correct functions and parameters 
     # depending on whether non-conjugated complex poles are allowed or not
@@ -363,6 +363,8 @@ def vectfit_auto(f, s, n_complex_pairs=10, n_real_poles=0, n_iter=10, show=False
         vectfit_iter = vectfit_step
         residue_calc = calculate_residues
         n_complex_pole_locs = n_complex_pairs
+        if (n_complex_pairs!=10 or n_complex_poles!=10 or n_real_poles!=0 or loss_ratio!=1e-2) and (init_poles != []) and suppress_warnings == False:
+            warnings.warn("Arguments 'n_complex_pairs', 'n_complex_poles', 'n_real_poles', and 'loss_ratio' are ignored if initial poles are provided with 'init_poles'.")
         if n_complex_poles != 10 and suppress_warnings == False:
             warnings.warn("Argument n_complex_poles is ignored if allow_nonconj is False. Use n_complex_pairs instead.")
     if allow_nonconj == True:
@@ -373,29 +375,32 @@ def vectfit_auto(f, s, n_complex_pairs=10, n_real_poles=0, n_iter=10, show=False
             warnings.warn("Argument n_complex_pairs is ignored if allow_nonconj is True. Use n_complex_poles instead.")
     
     w = np.imag(s)
-    init_poles = []
     
-    # Generating initial poles
-    ## Determining locations of complex poles or pole pairs
-    if init_spacing=="lin":
-        pole_locs = np.linspace(w[0], w[-1], n_complex_pole_locs+2)[1:-1]
-    elif init_spacing=="log":
-        pole_locs = np.geomspace(w[0], w[-1], n_complex_pole_locs+2)[1:-1]
+    if init_poles != []:
+        init_poles = np.asarray(init_poles)
+    
     else:
-        raise RuntimeError("Acceptable values for init_spacing are 'lin' and 'log'")
+        # Generating initial poles
+        ## Determining locations of complex poles or pole pairs
+        if init_spacing=="lin":
+            pole_locs = np.linspace(w[0], w[-1], n_complex_pole_locs+2)[1:-1]
+        elif init_spacing=="log":
+            pole_locs = np.geomspace(w[0], w[-1], n_complex_pole_locs+2)[1:-1]
+        else:
+            raise RuntimeError("Acceptable values for init_spacing are 'lin' and 'log'")
 
-    lr = loss_ratio
-    
-   
-    # Generating initial complex poles or pairs
-    if allow_nonconj == False and n_complex_pole_locs != 0:
-        init_poles = np.concatenate([[p*(-lr + 1j), p*(-lr - 1j)] for p in pole_locs])
-    elif allow_nonconj == True and n_complex_pole_locs != 0:
-        init_poles = np.concatenate([[p*(-lr + 1j)] for p in pole_locs])
-        
-    # Generating initial real poles
-    if n_real_poles != 0:
-        init_poles = np.concatenate((init_poles, n_real_poles*[-1]))
+        lr = loss_ratio
+
+
+        # Generating initial complex poles or pairs
+        if allow_nonconj == False and n_complex_pole_locs != 0:
+            init_poles = np.concatenate([[p*(-lr + 1j), p*(-lr - 1j)] for p in pole_locs])
+        elif allow_nonconj == True and n_complex_pole_locs != 0:
+            init_poles = np.concatenate([[p*(-lr + 1j)] for p in pole_locs])
+
+        # Generating initial real poles
+        if n_real_poles != 0:
+            init_poles = np.concatenate((init_poles, n_real_poles*[-1]))
 
     # Running vectfit_step() or cvectfit_step() iteratively
     poles = init_poles
