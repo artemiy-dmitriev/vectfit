@@ -123,7 +123,7 @@ def vectfit_step(f, s, poles, allow_unstable=False):
         new_poles[unstable] -= 2*np.real(new_poles)[unstable]
     return new_poles
 
-def calculate_residues(f, s, poles, rcond=-1, allow_rescale=False):
+def calculate_residues(f, s, poles, rcond=-1, allow_rescale=False, suppress_warnings=False):
     Ns = len(s)
     N = len(poles)
 
@@ -170,7 +170,7 @@ def calculate_residues(f, s, poles, rcond=-1, allow_rescale=False):
     if cA > 1e13:
         if allow_rescale==True:
             raise IllCondError(cA)
-        else:
+        elif suppress_warnings == False:
             warnings.warn("Ill Conditioned Matrix. Consider scaling the problem down \nCond(A)={}".format(cA))
     x, residuals, rnk, s = np.linalg.lstsq(A, b, rcond=rcond)
 
@@ -261,7 +261,7 @@ def cvectfit_step(f, s, poles, allow_unstable=False):
         
     return new_poles
 
-def calculate_residues_cvectfit(f, s, poles, rcond=-1, allow_rescale=False):
+def calculate_residues_cvectfit(f, s, poles, rcond=-1, allow_rescale=False, suppress_warnings=False):
     Ns = len(s)
     N = len(poles)
 
@@ -271,18 +271,18 @@ def calculate_residues_cvectfit(f, s, poles, rcond=-1, allow_rescale=False):
     Nc = np.sum(cindex) # number of complex poles
     Ntotal = N + Nc # we need two for each complex pole
 
-    A = np.zeros((Ns, 2*Ntotal+2), dtype=np.complex128)
+    A = np.zeros((Ns, 1*Ntotal+2), dtype=np.complex128)
     k=0
     for i, p in enumerate(poles):
         if cindex[i] == 0:
             A[:, k] = 1/(s - p)
-            A[:, Ntotal+2+k] = -A[:, k] * f
+            #A[:, Ntotal+2+k] = -A[:, k] * f
             k += 1
         elif cindex[i] == 1:
             A[:, k] = 1/(s - p)
             A[:, k+1] = 1j/(s - p)
-            A[:, Ntotal+2+k] = -A[:, k] * f
-            A[:, Ntotal+2+k+1] = -A[:, k+1] * f
+            #A[:, Ntotal+2+k] = -A[:, k] * f
+            #A[:, Ntotal+2+k+1] = -A[:, k+1] * f
             k += 2
         else:
             raise RuntimeError("cindex[%s] = %s" % (i, cindex[i]))
@@ -298,7 +298,7 @@ def calculate_residues_cvectfit(f, s, poles, rcond=-1, allow_rescale=False):
     if cA > 1e13:
         if allow_rescale==True:
             raise IllCondError(cA)
-        else:
+        elif suppress_warnings == False:
             warnings.warn("Ill Conditioned Matrix. Consider scaling the problem down \nCond(A)={}".format(cA))
     x, residuals, rnk, s = np.linalg.lstsq(A, b, rcond=rcond)
 
@@ -355,7 +355,7 @@ def print_zpk_params(zeros, poles, k, switch_to_Hz=False):
             print("k               :\n", k)
 
 def vectfit_auto(f, s, n_complex_pairs=10, n_real_poles=0, n_iter=10, show=False,
-                  init_spacing="lin", loss_ratio=1e-2, rcond=-1, track_poles=False, allow_unstable=False, allow_rescale=True, allow_nonconj=False, n_complex_poles=10):
+                  init_spacing="lin", loss_ratio=1e-2, rcond=-1, track_poles=False, allow_unstable=False, allow_rescale=True, allow_nonconj=False, n_complex_poles=10, suppress_warnings=False):
     
     # Choose correct functions and parameters 
     # depending on whether non-conjugated complex poles are allowed or not
@@ -363,13 +363,13 @@ def vectfit_auto(f, s, n_complex_pairs=10, n_real_poles=0, n_iter=10, show=False
         vectfit_iter = vectfit_step
         residue_calc = calculate_residues
         n_complex_pole_locs = n_complex_pairs
-        if n_complex_poles != 10:
+        if n_complex_poles != 10 and suppress_warnings == False:
             warnings.warn("Argument n_complex_poles is ignored if allow_nonconj is False. Use n_complex_pairs instead.")
     if allow_nonconj == True:
         vectfit_iter = cvectfit_step
         residue_calc = calculate_residues_cvectfit
         n_complex_pole_locs = n_complex_poles
-        if n_complex_pairs != 10:
+        if n_complex_pairs != 10 and suppress_warnings == False:
             warnings.warn("Argument n_complex_pairs is ignored if allow_nonconj is True. Use n_complex_poles instead.")
     
     w = np.imag(s)
@@ -405,19 +405,20 @@ def vectfit_auto(f, s, n_complex_pairs=10, n_real_poles=0, n_iter=10, show=False
         poles_list.append(poles)
 
     try:
-        residues, d, h = residue_calc(f, s, poles, rcond=rcond, allow_rescale=allow_rescale)
+        residues, d, h = residue_calc(f, s, poles, rcond=rcond, allow_rescale=allow_rescale, suppress_warnings=suppress_warnings)
     except IllCondError as inst:
         cA, = inst.args
-        warnings.warn("Ill-conditioned matrix, Cond(A)={}. Attempting automatic rescaling".format(cA))
+        if suppress_warnings == False:
+            warnings.warn("Ill-conditioned matrix, Cond(A)={}. Attempting automatic rescaling".format(cA))
         s_scale = np.abs(s[-1])
         f_scale = np.abs(f[-1])
         
         if track_poles:
-            poles_s, residues_s, d_s, h_s, poles_list_s = vectfit_auto(f / f_scale, s / s_scale, n_complex_pairs=n_complex_pairs, n_real_poles=n_real_poles, n_iter=n_iter, show=False, init_spacing=init_spacing, loss_ratio=loss_ratio, rcond=rcond, track_poles=track_poles, allow_unstable=allow_unstable, allow_rescale=False, allow_nonconj=allow_nonconj, n_complex_poles=n_complex_poles)
+            poles_s, residues_s, d_s, h_s, poles_list_s = vectfit_auto(f / f_scale, s / s_scale, n_complex_pairs=n_complex_pairs, n_real_poles=n_real_poles, n_iter=n_iter, show=False, init_spacing=init_spacing, loss_ratio=loss_ratio, rcond=rcond, track_poles=track_poles, allow_unstable=allow_unstable, allow_rescale=False, allow_nonconj=allow_nonconj, n_complex_poles=n_complex_poles, suppress_warnings=suppress_warnings)
             poles_list = poles_list_s * s_scale
 
         else:
-            poles_s, residues_s, d_s, h_s = vectfit_auto(f / f_scale, s / s_scale, n_complex_pairs=n_complex_pairs, n_real_poles=n_real_poles, n_iter=n_iter, show=False, init_spacing=init_spacing, loss_ratio=loss_ratio, rcond=rcond, track_poles=track_poles, allow_unstable=allow_unstable, allow_rescale=False, allow_nonconj=allow_nonconj, n_complex_poles=n_complex_poles)
+            poles_s, residues_s, d_s, h_s = vectfit_auto(f / f_scale, s / s_scale, n_complex_pairs=n_complex_pairs, n_real_poles=n_real_poles, n_iter=n_iter, show=False, init_spacing=init_spacing, loss_ratio=loss_ratio, rcond=rcond, track_poles=track_poles, allow_unstable=allow_unstable, allow_rescale=False, allow_nonconj=allow_nonconj, n_complex_poles=n_complex_poles, suppress_warnings=suppress_warnings)
             
         poles = poles_s * s_scale
         residues = residues_s * f_scale * s_scale
